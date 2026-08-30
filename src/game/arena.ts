@@ -53,7 +53,7 @@ export const CHARACTERS: Character[] = [
     hp: 90,
     abilityName: "Projection Sorcery",
     abilityCooldown: 8,
-    abilityDescription: "Boost speed 2.3x for 3s + teleport to mouse on Q",
+    abilityDescription: "2.3s invincible + insane speed with electric afterimages",
   },
 ];
 
@@ -72,6 +72,8 @@ export interface ArenaPlayer {
   dashing?: boolean;
   slashing?: boolean;
   boosted?: boolean;
+  projecting?: boolean; // Naoya projection sorcery active
+  trail?: { x: number; y: number }[]; // Naoya afterimage positions
 }
 
 export interface Projectile {

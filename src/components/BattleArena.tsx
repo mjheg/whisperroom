@@ -163,35 +163,63 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
         ctx.fill();
       }
 
-      // Boost aura (Naoya)
-      if (player.boosted) {
-        // Speed lines around player
-        ctx.beginPath();
-        ctx.arc(player.x, player.y, PLAYER_RADIUS + 10, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(6, 182, 212, 0.7)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        // Inner glow
-        ctx.beginPath();
-        ctx.arc(player.x, player.y, PLAYER_RADIUS + 6, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(6, 182, 212, 0.2)";
-        ctx.fill();
+      // Naoya Projection Sorcery — afterimage trail ghosts + electric strobe
+      if (player.projecting && player.trail && player.trail.length > 0) {
+        for (let i = 0; i < player.trail.length; i++) {
+          const t = player.trail[i];
+          const ratio = i / (player.trail.length);
+          const baseAlpha = 0.65 * (1.0 - ratio * 0.75);
+          // 13% random blackout like game3
+          const alpha = Math.random() > 0.13 ? baseAlpha : 0;
+          if (alpha > 0) {
+            // Ghost circle with blue emissive color
+            const white = 1.0 - ratio * 0.7;
+            const r = Math.round(white * 0.15 * 255);
+            const g = Math.round((white * 0.55 + 0.1) * 255);
+            const b = Math.round((0.95 - ratio * 0.2) * 255);
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, PLAYER_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            ctx.fill();
+          }
+        }
       }
 
-      // Teleport flash (Naoya dash)
-      if (player.dashing && player.characterId === "naoya") {
+      // Naoya projecting — electric strobe on main body
+      if (player.projecting) {
+        const now = performance.now() / 1000;
+        // 12% chance blackout frame
+        const strobe = Math.random() > 0.12 ? 1.0 : 0.0;
+        // Dual-frequency electric pulse
+        const slowWave = 0.5 + 0.5 * Math.sin(now * 6);
+        const fastPulse = 0.5 + 0.5 * Math.sin(now * 38);
+        const pulse = slowWave * 0.4 + fastPulse * 0.6;
+        // Electric blue body
+        const r = Math.round(pulse * 0.25 * 255);
+        const g = Math.round((0.2 + pulse * 0.55) * 255);
+        const b = Math.round((0.7 + pulse * 0.3) * 255);
         ctx.beginPath();
-        ctx.arc(player.x, player.y, 30, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(6, 182, 212, 0.4)";
+        ctx.arc(player.x, player.y, PLAYER_RADIUS + 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${strobe * 0.5})`;
         ctx.fill();
+        // Scale distortion hint — jittery outer ring
+        const jitterX = Math.sin(now * 73) * 2;
+        const jitterY = Math.cos(now * 61) * 1.5;
+        ctx.beginPath();
+        ctx.arc(player.x + jitterX, player.y + jitterY, PLAYER_RADIUS + 5, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(100, 200, 255, ${strobe * 0.35})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
       }
 
       // Player body
       ctx.beginPath();
       ctx.arc(player.x, player.y, PLAYER_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = color;
+      // Naoya projecting: electric blue with strobe
+      const bodyColor = player.projecting
+        ? (Math.random() > 0.12 ? "rgba(25, 140, 255, 1)" : "rgba(10, 60, 120, 0.5)")
+        : color;
+      ctx.fillStyle = bodyColor;
       ctx.fill();
       if (isMe) {
         ctx.strokeStyle = "#ffffff";
@@ -233,10 +261,10 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
         ctx.fillStyle = "#ffffff";
         ctx.fillText(`HP: ${me.hp}/${me.maxHp}`, 10, ARENA_H - 30);
 
-        // Boost indicator for Naoya
-        if (me.boosted) {
+        // Projection indicator for Naoya
+        if (me.projecting) {
           ctx.fillStyle = "#06b6d4";
-          ctx.fillText("⚡ BOOSTED", 10, ARENA_H - 50);
+          ctx.fillText("PROJECTION SORCERY", 10, ARENA_H - 50);
         }
       }
     }
@@ -288,17 +316,26 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
           Close
         </button>
       </div>
-      <canvas
-        ref={canvasRef}
-        width={ARENA_W}
-        height={ARENA_H}
-        className="border border-gray-700 rounded-lg cursor-crosshair max-w-full"
-        style={{ maxHeight: "80vh" }}
-        onMouseMove={handleMouseMove}
-        onMouseDown={() => { mouseRef.current.shooting = true; }}
-        onMouseUp={() => { mouseRef.current.shooting = false; }}
-        onContextMenu={(e) => e.preventDefault()}
-      />
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          width={ARENA_W}
+          height={ARENA_H}
+          className="border border-gray-700 rounded-lg cursor-crosshair max-w-full"
+          style={{ maxHeight: "80vh" }}
+          onMouseMove={handleMouseMove}
+          onMouseDown={() => { mouseRef.current.shooting = true; }}
+          onMouseUp={() => { mouseRef.current.shooting = false; }}
+          onContextMenu={(e) => e.preventDefault()}
+        />
+        {/* Naoya projection screen overlay — blue glow + scanlines */}
+        {gameState?.players.find(p => p.id === myId)?.projecting && (
+          <div className="absolute inset-0 pointer-events-none rounded-lg overflow-hidden">
+            <div className="absolute inset-0" style={{ boxShadow: "inset 0 0 80px 30px rgba(20,100,255,0.55), inset 0 0 30px 10px rgba(100,200,255,0.3)" }} />
+            <div className="absolute inset-0 opacity-10" style={{ background: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(80,160,255,0.4) 3px, rgba(80,160,255,0.4) 4px)" }} />
+          </div>
+        )}
+      </div>
       {!gameState && (
         <p className="text-gray-400 mt-4">Waiting for another player to join...</p>
       )}

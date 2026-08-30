@@ -88,7 +88,7 @@ function tick(arena: ArenaRoom, io: Server) {
 
     if (dx !== 0 || dy !== 0) {
       const len = Math.sqrt(dx * dx + dy * dy);
-      const speed = player.boosted ? PLAYER_SPEED * 2.3 : PLAYER_SPEED;
+      const speed = player.projecting ? PLAYER_SPEED * 3.5 : player.boosted ? PLAYER_SPEED * 2.3 : PLAYER_SPEED;
       dx = (dx / len) * speed;
       dy = (dy / len) * speed;
 
@@ -99,6 +99,12 @@ function tick(arena: ArenaRoom, io: Server) {
       if (!collidesWithObstacle(clamped.x, clamped.y, PLAYER_RADIUS)) {
         player.x = clamped.x;
         player.y = clamped.y;
+      }
+
+      // Record trail for Naoya projection
+      if (player.projecting && player.trail) {
+        player.trail.unshift({ x: player.x, y: player.y });
+        if (player.trail.length > 9) player.trail.length = 9;
       }
     }
 
@@ -162,29 +168,18 @@ function tick(arena: ArenaRoom, io: Server) {
           }
         }
       } else if (char.id === "naoya") {
-        // Projection Sorcery - teleport to mouse + boost speed for 3s
+        // Projection Sorcery - 2.3s invincible + insane speed zigzag
         player.abilityTimer = char.abilityCooldown * 1000;
-        // Instant teleport to mouse position
-        const teleportX = input.mouseX;
-        const teleportY = input.mouseY;
-        const clamped = clampToArena(teleportX, teleportY, PLAYER_RADIUS);
-        if (!collidesWithObstacle(clamped.x, clamped.y, PLAYER_RADIUS)) {
-          player.x = clamped.x;
-          player.y = clamped.y;
-        }
-        // Damage anyone near teleport endpoint
-        for (const other of alivePlayers) {
-          if (other.id === socketId) continue;
-          const dist = Math.sqrt((other.x - player.x) ** 2 + (other.y - player.y) ** 2);
-          if (dist < 40 && !other.shielded) {
-            other.hp = Math.max(0, other.hp - 20);
-            if (other.hp <= 0) other.alive = false;
-          }
-        }
-        // Speed boost for 3 seconds
+        player.projecting = true;
+        player.shielded = true; // invincible during projection
         player.boosted = true;
-        player.dashing = true;
-        setTimeout(() => { player.boosted = false; }, 3000);
+        player.trail = [];
+        setTimeout(() => {
+          player.projecting = false;
+          player.shielded = false;
+          player.boosted = false;
+          player.trail = [];
+        }, 2300);
       }
     }
   }
