@@ -88,6 +88,11 @@ export default function ChatRoom({ code }: ChatRoomProps) {
     socket.emit("chat:send", text);
   }, []);
 
+  const handleGif = useCallback((gifUrl: string) => {
+    const socket = getSocket();
+    socket.emit("chat:gif", gifUrl);
+  }, []);
+
   function handleLeave() {
     disconnectSocket();
     router.push("/");
@@ -153,7 +158,7 @@ export default function ChatRoom({ code }: ChatRoomProps) {
       <div className="flex flex-1 min-h-0">
         <div className={`flex flex-col flex-1 ${showVoice ? "hidden md:flex" : "flex"}`}>
           <ChatMessages messages={messages} />
-          <ChatInput onSend={handleSend} />
+          <ChatInput onSend={handleSend} onGif={handleGif} />
         </div>
         <div className={`${showVoice ? "flex flex-col flex-1 md:flex-none" : "hidden"} md:flex`}>
           <VoicePanel users={users} />

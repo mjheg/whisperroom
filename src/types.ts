@@ -8,6 +8,8 @@ export interface ChatMessage {
   id: string;
   nickname: string;
   text: string;
+  type?: "text" | "gif";
+  gifUrl?: string;
   timestamp: number;
 }
 
@@ -34,6 +36,7 @@ export interface ClientToServerEvents {
   "room:create": (nickname: string, callback: (code: string) => void) => void;
   "room:join": (data: { code: string; nickname: string }) => void;
   "chat:send": (text: string) => void;
+  "chat:gif": (gifUrl: string) => void;
   "voice:join": () => void;
   "voice:leave": () => void;
   "voice:signal": (data: { to: string; signal: unknown }) => void;

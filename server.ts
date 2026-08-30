@@ -101,6 +101,23 @@ app.prepare().then(() => {
       io.to(currentRoom).emit("chat:message", message);
     });
 
+    socket.on("chat:gif", (gifUrl) => {
+      if (!currentRoom) return;
+      const room = rooms.get(currentRoom);
+      if (!room) return;
+      const user = room.users.get(socket.id!);
+      if (!user) return;
+      const message = {
+        id: `${socket.id}-${Date.now()}`,
+        nickname: user.nickname,
+        text: "",
+        type: "gif" as const,
+        gifUrl,
+        timestamp: Date.now(),
+      };
+      io.to(currentRoom).emit("chat:message", message);
+    });
+
     socket.on("voice:join", () => {
       if (!currentRoom) return;
       const room = rooms.get(currentRoom);
