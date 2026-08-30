@@ -224,6 +224,25 @@ app.prepare().then(() => {
       }
     });
 
+    // Drawing
+    socket.on("draw:stroke", (stroke) => {
+      if (!currentRoom) return;
+      const room = rooms.get(currentRoom);
+      if (!room) return;
+      const user = room.users.get(socket.id!);
+      if (!user) return;
+      socket.to(currentRoom).emit("draw:stroke", { ...stroke, nickname: user.nickname });
+    });
+
+    socket.on("draw:clear", () => {
+      if (!currentRoom) return;
+      const room = rooms.get(currentRoom);
+      if (!room) return;
+      const user = room.users.get(socket.id!);
+      if (!user) return;
+      io.to(currentRoom).emit("draw:clear", user.nickname);
+    });
+
     socket.on("voice:join", () => {
       if (!currentRoom) return;
       const room = rooms.get(currentRoom);

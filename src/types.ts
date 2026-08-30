@@ -33,6 +33,14 @@ export interface ServerToClientEvents {
   "game:ttt-invite": (data: { gameId: string; from: string; fromNickname: string }) => void;
   "game:ttt-started": (data: { gameId: string; players: [string, string]; nicknames: [string, string]; board: string[]; turn: string }) => void;
   "game:ttt-update": (data: { gameId: string; board: string[]; turn: string; winner: string | null; draw: boolean }) => void;
+  "draw:stroke": (data: DrawStroke & { nickname: string }) => void;
+  "draw:clear": (nickname: string) => void;
+}
+
+export interface DrawStroke {
+  points: { x: number; y: number }[];
+  color: string;
+  width: number;
 }
 
 export interface ClientToServerEvents {
@@ -43,6 +51,8 @@ export interface ClientToServerEvents {
   "game:ttt-start": (opponentId: string) => void;
   "game:ttt-move": (data: { index: number; gameId: string }) => void;
   "game:ttt-accept": (gameId: string) => void;
+  "draw:stroke": (data: DrawStroke) => void;
+  "draw:clear": () => void;
   "voice:join": () => void;
   "voice:leave": () => void;
   "voice:signal": (data: { to: string; signal: unknown }) => void;

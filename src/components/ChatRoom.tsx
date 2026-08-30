@@ -9,6 +9,7 @@ import ChatInput from "./ChatInput";
 import VoicePanel from "./VoicePanel";
 import GameMenu from "./GameMenu";
 import TicTacToe from "./TicTacToe";
+import DrawBoard from "./DrawBoard";
 import type { ChatMessage, User } from "@/types";
 
 interface ChatRoomProps {
@@ -32,6 +33,7 @@ export default function ChatRoom({ code }: ChatRoomProps) {
   const [needsNickname, setNeedsNickname] = useState(false);
   const [activeGame, setActiveGame] = useState<GameState | null>(null);
   const [invite, setInvite] = useState<{ gameId: string; fromNickname: string } | null>(null);
+  const [showDraw, setShowDraw] = useState(false);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("whisper-nickname");
@@ -192,6 +194,13 @@ export default function ChatRoom({ code }: ChatRoomProps) {
           mySocketId={socket.id || ""}
           onChallenge={handleChallenge}
         />
+        <button
+          onClick={() => setShowDraw(true)}
+          className="px-2.5 py-1.5 bg-orange-700 hover:bg-orange-600 rounded-lg
+                     transition-colors text-sm font-semibold"
+        >
+          Draw
+        </button>
       </RoomHeader>
 
       {/* Game invite notification */}
@@ -226,6 +235,9 @@ export default function ChatRoom({ code }: ChatRoomProps) {
           <VoicePanel users={users} />
         </div>
       </div>
+
+      {/* Draw board overlay */}
+      {showDraw && <DrawBoard onClose={() => setShowDraw(false)} />}
 
       {/* Active game overlay */}
       {activeGame && (
