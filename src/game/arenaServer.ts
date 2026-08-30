@@ -88,8 +88,9 @@ function tick(arena: ArenaRoom, io: Server) {
 
     if (dx !== 0 || dy !== 0) {
       const len = Math.sqrt(dx * dx + dy * dy);
-      dx = (dx / len) * PLAYER_SPEED;
-      dy = (dy / len) * PLAYER_SPEED;
+      const speed = player.boosted ? PLAYER_SPEED * 2.3 : PLAYER_SPEED;
+      dx = (dx / len) * speed;
+      dy = (dy / len) * speed;
 
       const newX = player.x + dx;
       const newY = player.y + dy;
@@ -160,6 +161,30 @@ function tick(arena: ArenaRoom, io: Server) {
             if (other.hp <= 0) other.alive = false;
           }
         }
+      } else if (char.id === "naoya") {
+        // Projection Sorcery - teleport to mouse + boost speed for 3s
+        player.abilityTimer = char.abilityCooldown * 1000;
+        // Instant teleport to mouse position
+        const teleportX = input.mouseX;
+        const teleportY = input.mouseY;
+        const clamped = clampToArena(teleportX, teleportY, PLAYER_RADIUS);
+        if (!collidesWithObstacle(clamped.x, clamped.y, PLAYER_RADIUS)) {
+          player.x = clamped.x;
+          player.y = clamped.y;
+        }
+        // Damage anyone near teleport endpoint
+        for (const other of alivePlayers) {
+          if (other.id === socketId) continue;
+          const dist = Math.sqrt((other.x - player.x) ** 2 + (other.y - player.y) ** 2);
+          if (dist < 40 && !other.shielded) {
+            other.hp = Math.max(0, other.hp - 20);
+            if (other.hp <= 0) other.alive = false;
+          }
+        }
+        // Speed boost for 3 seconds
+        player.boosted = true;
+        player.dashing = true;
+        setTimeout(() => { player.boosted = false; }, 3000);
       }
     }
   }

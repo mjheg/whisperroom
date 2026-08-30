@@ -3,7 +3,7 @@
 export const ARENA_W = 800;
 export const ARENA_H = 600;
 export const PLAYER_RADIUS = 16;
-export const PLAYER_SPEED = 3;
+export const PLAYER_SPEED = 5;
 export const PROJECTILE_SPEED = 8;
 export const PROJECTILE_RADIUS = 5;
 export const TICK_RATE = 50; // ms between updates (20 ticks/sec)
@@ -46,6 +46,15 @@ export const CHARACTERS: Character[] = [
     abilityCooldown: 5,
     abilityDescription: "Dash forward dealing 25 damage on hit",
   },
+  {
+    id: "naoya",
+    name: "Naoya",
+    color: "#06b6d4",
+    hp: 90,
+    abilityName: "Projection Sorcery",
+    abilityCooldown: 8,
+    abilityDescription: "Boost speed 2.3x for 3s + teleport to mouse on Q",
+  },
 ];
 
 export interface ArenaPlayer {
@@ -62,6 +71,7 @@ export interface ArenaPlayer {
   // Visual effects
   dashing?: boolean;
   slashing?: boolean;
+  boosted?: boolean;
 }
 
 export interface Projectile {

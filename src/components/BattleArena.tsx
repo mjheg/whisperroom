@@ -4,7 +4,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { getSocket } from "@/lib/socket";
 import {
   ARENA_W, ARENA_H, PLAYER_RADIUS, OBSTACLES, CHARACTERS,
-  type ArenaState, type ArenaPlayer,
+  type ArenaState,
 } from "@/game/arena";
 
 interface BattleArenaProps {
@@ -13,6 +13,7 @@ interface BattleArenaProps {
 
 export default function BattleArena({ onClose }: BattleArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [gameState, setGameState] = useState<ArenaState | null>(null);
   const keysRef = useRef({ w: false, a: false, s: false, d: false });
   const mouseRef = useRef({ x: 0, y: 0, shooting: false });
@@ -22,15 +23,17 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
   const socket = getSocket();
   const myId = socket.id;
 
+  // Auto-focus container on mount
+  useEffect(() => {
+    containerRef.current?.focus();
+  }, []);
+
   // Listen for game state
   useEffect(() => {
     socket.on("arena:state", (state: ArenaState) => {
       setGameState(state);
     });
-
-    return () => {
-      socket.off("arena:state");
-    };
+    return () => { socket.off("arena:state"); };
   }, [socket]);
 
   // Send inputs at 20fps
@@ -43,38 +46,30 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
         shooting: mouseRef.current.shooting,
         ability: abilityRef.current,
       });
-      abilityRef.current = false; // one-shot
+      abilityRef.current = false;
     }, 50);
-
     return () => clearInterval(interval);
   }, [socket]);
 
-  // Keyboard handlers
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      const key = e.key.toLowerCase();
-      if (key === "w" || key === "arrowup") keysRef.current.w = true;
-      if (key === "a" || key === "arrowleft") keysRef.current.a = true;
-      if (key === "s" || key === "arrowdown") keysRef.current.s = true;
-      if (key === "d" || key === "arrowright") keysRef.current.d = true;
-      if (key === "q") abilityRef.current = true;
-    }
-    function handleKeyUp(e: KeyboardEvent) {
-      const key = e.key.toLowerCase();
-      if (key === "w" || key === "arrowup") keysRef.current.w = false;
-      if (key === "a" || key === "arrowleft") keysRef.current.a = false;
-      if (key === "s" || key === "arrowdown") keysRef.current.s = false;
-      if (key === "d" || key === "arrowright") keysRef.current.d = false;
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, []);
+  // Keyboard handlers on container div
+  function handleKeyDown(e: React.KeyboardEvent) {
+    e.preventDefault();
+    const key = e.key.toLowerCase();
+    if (key === "w" || key === "arrowup") keysRef.current.w = true;
+    if (key === "a" || key === "arrowleft") keysRef.current.a = true;
+    if (key === "s" || key === "arrowdown") keysRef.current.s = true;
+    if (key === "d" || key === "arrowright") keysRef.current.d = true;
+    if (key === "q") abilityRef.current = true;
+  }
 
-  // Mouse position relative to canvas
+  function handleKeyUp(e: React.KeyboardEvent) {
+    const key = e.key.toLowerCase();
+    if (key === "w" || key === "arrowup") keysRef.current.w = false;
+    if (key === "a" || key === "arrowleft") keysRef.current.a = false;
+    if (key === "s" || key === "arrowdown") keysRef.current.s = false;
+    if (key === "d" || key === "arrowright") keysRef.current.d = false;
+  }
+
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -85,7 +80,7 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
     mouseRef.current.y = (e.clientY - rect.top) * scaleY;
   }, []);
 
-  // Render game
+  // Render
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !gameState) {
@@ -94,24 +89,18 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
     }
     const ctx = canvas.getContext("2d")!;
 
-    // Clear
+    // Background
     ctx.fillStyle = "#111827";
     ctx.fillRect(0, 0, ARENA_W, ARENA_H);
 
-    // Grid lines
+    // Grid
     ctx.strokeStyle = "#1f2937";
     ctx.lineWidth = 1;
     for (let x = 0; x < ARENA_W; x += 40) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, ARENA_H);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, ARENA_H); ctx.stroke();
     }
     for (let y = 0; y < ARENA_H; y += 40) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(ARENA_W, y);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(ARENA_W, y); ctx.stroke();
     }
 
     // Obstacles
@@ -129,7 +118,6 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
       ctx.arc(proj.x, proj.y, 5, 0, Math.PI * 2);
       ctx.fillStyle = "#fbbf24";
       ctx.fill();
-      // Glow
       ctx.beginPath();
       ctx.arc(proj.x, proj.y, 8, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(251, 191, 36, 0.3)";
@@ -143,7 +131,7 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
       const color = char?.color || "#ffffff";
       const isMe = player.id === myId;
 
-      // Shield effect
+      // Shield (Gojo)
       if (player.shielded) {
         ctx.beginPath();
         ctx.arc(player.x, player.y, PLAYER_RADIUS + 8, 0, Math.PI * 2);
@@ -156,7 +144,7 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
         ctx.fill();
       }
 
-      // Slash effect (Sukuna)
+      // Slash (Sukuna)
       if (player.slashing) {
         ctx.beginPath();
         ctx.arc(player.x, player.y, 120, 0, Math.PI * 2);
@@ -168,10 +156,35 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
       }
 
       // Dash trail (Itadori)
-      if (player.dashing) {
+      if (player.dashing && player.characterId === "itadori") {
         ctx.beginPath();
         ctx.arc(player.x, player.y, PLAYER_RADIUS + 4, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(249, 115, 22, 0.4)";
+        ctx.fill();
+      }
+
+      // Boost aura (Naoya)
+      if (player.boosted) {
+        // Speed lines around player
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, PLAYER_RADIUS + 10, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(6, 182, 212, 0.7)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // Inner glow
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, PLAYER_RADIUS + 6, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(6, 182, 212, 0.2)";
+        ctx.fill();
+      }
+
+      // Teleport flash (Naoya dash)
+      if (player.dashing && player.characterId === "naoya") {
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, 30, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(6, 182, 212, 0.4)";
         ctx.fill();
       }
 
@@ -192,25 +205,23 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
       const barX = player.x - barW / 2;
       const barY = player.y - PLAYER_RADIUS - 12;
       const hpRatio = player.hp / player.maxHp;
-
       ctx.fillStyle = "#374151";
       ctx.fillRect(barX, barY, barW, barH);
       ctx.fillStyle = hpRatio > 0.5 ? "#22c55e" : hpRatio > 0.25 ? "#eab308" : "#ef4444";
       ctx.fillRect(barX, barY, barW * hpRatio, barH);
 
-      // Nickname
+      // Nickname + character name
       ctx.fillStyle = isMe ? "#ffffff" : "#9ca3af";
       ctx.font = "bold 11px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(player.nickname, player.x, barY - 4);
+      ctx.fillText(`${player.nickname}`, player.x, barY - 4);
     }
 
-    // HUD for my player
+    // HUD
     const me = gameState.players.find(p => p.id === myId);
     if (me) {
       const char = CHARACTERS.find(c => c.id === me.characterId);
       if (char) {
-        // Ability cooldown
         const cdSec = Math.ceil(me.abilityTimer / 1000);
         ctx.fillStyle = me.abilityTimer > 0 ? "#6b7280" : "#22c55e";
         ctx.font = "bold 14px sans-serif";
@@ -219,18 +230,21 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
           `[Q] ${char.abilityName}${cdSec > 0 ? ` (${cdSec}s)` : " READY"}`,
           10, ARENA_H - 10
         );
-
-        // HP
         ctx.fillStyle = "#ffffff";
         ctx.fillText(`HP: ${me.hp}/${me.maxHp}`, 10, ARENA_H - 30);
+
+        // Boost indicator for Naoya
+        if (me.boosted) {
+          ctx.fillStyle = "#06b6d4";
+          ctx.fillText("⚡ BOOSTED", 10, ARENA_H - 50);
+        }
       }
     }
 
-    // Game over overlay
+    // Game over
     if (gameState.gameOver) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
       ctx.fillRect(0, 0, ARENA_W, ARENA_H);
-      ctx.fillStyle = "#ffffff";
       ctx.font = "bold 36px sans-serif";
       ctx.textAlign = "center";
       if (gameState.winnerId === myId) {
@@ -240,6 +254,7 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
         ctx.fillStyle = "#ef4444";
         ctx.fillText(`${gameState.winnerNickname} WINS!`, ARENA_W / 2, ARENA_H / 2 - 20);
       } else {
+        ctx.fillStyle = "#ffffff";
         ctx.fillText("DRAW!", ARENA_W / 2, ARENA_H / 2 - 20);
       }
       ctx.fillStyle = "#9ca3af";
@@ -256,7 +271,13 @@ export default function BattleArena({ onClose }: BattleArenaProps) {
   }, [render]);
 
   return (
-    <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50">
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
+      className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 outline-none"
+    >
       <div className="flex items-center gap-4 mb-2">
         <h2 className="text-lg font-bold">Jujutsu Battle Arena</h2>
         <span className="text-gray-400 text-sm">WASD move · Click shoot · Q ability</span>
