@@ -7,6 +7,7 @@ import type {
   ClientToServerEvents,
   User,
 } from "./src/types";
+import { setupArena } from "./src/game/arenaServer";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "0.0.0.0";
@@ -268,6 +269,12 @@ app.prepare().then(() => {
     socket.on("voice:signal", ({ to, signal }) => {
       socket.to(to).emit("voice:signal", { from: socket.id!, signal });
     });
+
+    // Arena game
+    setupArena(io, socket as any,
+      () => currentRoom,
+      () => currentRoom ? rooms.get(currentRoom)?.users ?? null : null
+    );
 
     socket.on("disconnect", () => {
       if (!currentRoom) return;

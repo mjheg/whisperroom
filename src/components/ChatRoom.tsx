@@ -10,6 +10,8 @@ import VoicePanel from "./VoicePanel";
 import GameMenu from "./GameMenu";
 import TicTacToe from "./TicTacToe";
 import DrawBoard from "./DrawBoard";
+import CharacterSelect from "./CharacterSelect";
+import BattleArena from "./BattleArena";
 import type { ChatMessage, User } from "@/types";
 
 interface ChatRoomProps {
@@ -34,6 +36,8 @@ export default function ChatRoom({ code }: ChatRoomProps) {
   const [activeGame, setActiveGame] = useState<GameState | null>(null);
   const [invite, setInvite] = useState<{ gameId: string; fromNickname: string } | null>(null);
   const [showDraw, setShowDraw] = useState(false);
+  const [showCharSelect, setShowCharSelect] = useState(false);
+  const [showArena, setShowArena] = useState(false);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("whisper-nickname");
@@ -193,6 +197,7 @@ export default function ChatRoom({ code }: ChatRoomProps) {
           users={users}
           mySocketId={socket.id || ""}
           onChallenge={handleChallenge}
+          onArena={() => setShowCharSelect(true)}
         />
         <button
           onClick={() => setShowDraw(true)}
@@ -238,6 +243,22 @@ export default function ChatRoom({ code }: ChatRoomProps) {
 
       {/* Draw board overlay */}
       {showDraw && <DrawBoard onClose={() => setShowDraw(false)} />}
+
+      {/* Character select */}
+      {showCharSelect && (
+        <CharacterSelect
+          onSelect={(charId) => {
+            const s = getSocket();
+            s.emit("arena:start", charId);
+            setShowCharSelect(false);
+            setShowArena(true);
+          }}
+          onCancel={() => setShowCharSelect(false)}
+        />
+      )}
+
+      {/* Battle Arena */}
+      {showArena && <BattleArena onClose={() => setShowArena(false)} />}
 
       {/* Active game overlay */}
       {activeGame && (
