@@ -19,8 +19,9 @@ export default function RoomHeader({
 }: RoomHeaderProps) {
   const [copied, setCopied] = useState(false);
 
-  function copyCode() {
-    navigator.clipboard.writeText(code);
+  function copyLink() {
+    const url = `${window.location.origin}/room/${code}`;
+    navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -28,13 +29,13 @@ export default function RoomHeader({
   return (
     <header className="flex items-center justify-between px-3 py-2.5 bg-gray-900 border-b border-gray-800 gap-2">
       <button
-        onClick={copyCode}
+        onClick={copyLink}
         className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700
                    rounded-lg transition-colors text-sm font-mono shrink-0"
-        title="Click to copy"
+        title="Click to copy invite link"
       >
         <span className="text-blue-400 font-semibold">{code}</span>
-        <span className="text-gray-500 text-xs">{copied ? "Copied!" : "Copy"}</span>
+        <span className="text-gray-500 text-xs">{copied ? "Link copied!" : "Invite"}</span>
       </button>
 
       <div className="flex items-center gap-2">

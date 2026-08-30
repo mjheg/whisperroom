@@ -1,0 +1,10 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - heading "WhisperRoom" [level=1] [ref=e4]
+    - paragraph [ref=e5]: Private chat rooms — no login required
+    - textbox "Nickname" [ref=e6]
+    - generic [ref=e7]:
+      - textbox "Room code (e.g. cat-3K)" [ref=e8]
+      - button "Join" [ref=e9]
+    - generic [ref=e10]: or
+    - button "Create New Room" [ref=e14]

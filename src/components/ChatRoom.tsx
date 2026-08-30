@@ -19,17 +19,26 @@ export default function ChatRoom({ code }: ChatRoomProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [connected, setConnected] = useState(false);
   const [showVoice, setShowVoice] = useState(false);
+  const [nickname, setNickname] = useState<string | null>(null);
+  const [nicknameInput, setNicknameInput] = useState("");
+  const [needsNickname, setNeedsNickname] = useState(false);
 
+  // Check for existing nickname on mount
   useEffect(() => {
-    const socket = getSocket();
-    const nickname = sessionStorage.getItem("whisper-nickname");
-
-    if (!nickname) {
-      router.push("/");
-      return;
+    const saved = sessionStorage.getItem("whisper-nickname");
+    if (saved) {
+      setNickname(saved);
+    } else {
+      setNeedsNickname(true);
     }
+  }, []);
 
-    // Always set up listeners first, then connect and join
+  // Connect to room once we have a nickname
+  useEffect(() => {
+    if (!nickname) return;
+
+    const socket = getSocket();
+
     socket.on("room:joined", ({ users: roomUsers }) => {
       setUsers(roomUsers);
       setConnected(true);
@@ -53,7 +62,6 @@ export default function ChatRoom({ code }: ChatRoomProps) {
       router.push("/");
     });
 
-    // Join room only after socket is fully connected
     function joinRoom() {
       socket.emit("room:join", { code, nickname: nickname! });
     }
@@ -73,7 +81,7 @@ export default function ChatRoom({ code }: ChatRoomProps) {
       socket.off("room:not-found");
       socket.off("room:full");
     };
-  }, [code, router]);
+  }, [code, nickname, router]);
 
   const handleSend = useCallback((text: string) => {
     const socket = getSocket();
@@ -83,6 +91,46 @@ export default function ChatRoom({ code }: ChatRoomProps) {
   function handleLeave() {
     disconnectSocket();
     router.push("/");
+  }
+
+  function handleNicknameSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nicknameInput.trim()) return;
+    const name = nicknameInput.trim();
+    sessionStorage.setItem("whisper-nickname", name);
+    setNickname(name);
+    setNeedsNickname(false);
+  }
+
+  // Show nickname input for direct link visitors
+  if (needsNickname) {
+    return (
+      <div className="flex items-center justify-center h-dvh p-4">
+        <form onSubmit={handleNicknameSubmit} className="flex flex-col items-center gap-4 w-full max-w-sm">
+          <h1 className="text-3xl font-bold">WhisperRoom</h1>
+          <p className="text-gray-400 text-center">
+            Joining room <span className="text-blue-400 font-mono font-semibold">{code}</span>
+          </p>
+          <input
+            type="text"
+            placeholder="Enter your nickname"
+            value={nicknameInput}
+            onChange={(e) => setNicknameInput(e.target.value)}
+            maxLength={20}
+            autoFocus
+            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg
+                       focus:outline-none focus:border-blue-500 text-lg"
+          />
+          <button
+            type="submit"
+            className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold
+                       transition-colors"
+          >
+            Join
+          </button>
+        </form>
+      </div>
+    );
   }
 
   if (!connected) {
