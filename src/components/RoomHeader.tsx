@@ -8,6 +8,7 @@ interface RoomHeaderProps {
   onLeave: () => void;
   onToggleVoice?: () => void;
   showVoiceToggle?: boolean;
+  children?: React.ReactNode;
 }
 
 export default function RoomHeader({
@@ -16,6 +17,7 @@ export default function RoomHeader({
   onLeave,
   onToggleVoice,
   showVoiceToggle,
+  children,
 }: RoomHeaderProps) {
   const [copied, setCopied] = useState(false);
 
@@ -39,6 +41,7 @@ export default function RoomHeader({
       </button>
 
       <div className="flex items-center gap-2">
+        {children}
         <span className="text-gray-400 text-xs sm:text-sm">{userCount} online</span>
         {showVoiceToggle && (
           <button

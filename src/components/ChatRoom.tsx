@@ -7,10 +7,18 @@ import RoomHeader from "./RoomHeader";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
 import VoicePanel from "./VoicePanel";
+import GameMenu from "./GameMenu";
+import TicTacToe from "./TicTacToe";
 import type { ChatMessage, User } from "@/types";
 
 interface ChatRoomProps {
   code: string;
+}
+
+interface GameState {
+  gameId: string;
+  players: [string, string];
+  nicknames: [string, string];
 }
 
 export default function ChatRoom({ code }: ChatRoomProps) {
@@ -22,8 +30,9 @@ export default function ChatRoom({ code }: ChatRoomProps) {
   const [nickname, setNickname] = useState<string | null>(null);
   const [nicknameInput, setNicknameInput] = useState("");
   const [needsNickname, setNeedsNickname] = useState(false);
+  const [activeGame, setActiveGame] = useState<GameState | null>(null);
+  const [invite, setInvite] = useState<{ gameId: string; fromNickname: string } | null>(null);
 
-  // Check for existing nickname on mount
   useEffect(() => {
     const saved = sessionStorage.getItem("whisper-nickname");
     if (saved) {
@@ -33,7 +42,6 @@ export default function ChatRoom({ code }: ChatRoomProps) {
     }
   }, []);
 
-  // Connect to room once we have a nickname
   useEffect(() => {
     if (!nickname) return;
 
@@ -62,6 +70,16 @@ export default function ChatRoom({ code }: ChatRoomProps) {
       router.push("/");
     });
 
+    // Game events
+    socket.on("game:ttt-invite", ({ gameId, fromNickname }) => {
+      setInvite({ gameId, fromNickname });
+    });
+
+    socket.on("game:ttt-started", ({ gameId, players, nicknames }) => {
+      setActiveGame({ gameId, players, nicknames });
+      setInvite(null);
+    });
+
     function joinRoom() {
       socket.emit("room:join", { code, nickname: nickname! });
     }
@@ -80,6 +98,8 @@ export default function ChatRoom({ code }: ChatRoomProps) {
       socket.off("chat:message");
       socket.off("room:not-found");
       socket.off("room:full");
+      socket.off("game:ttt-invite");
+      socket.off("game:ttt-started");
     };
   }, [code, nickname, router]);
 
@@ -98,6 +118,17 @@ export default function ChatRoom({ code }: ChatRoomProps) {
     router.push("/");
   }
 
+  function handleChallenge(opponentId: string) {
+    const socket = getSocket();
+    socket.emit("game:ttt-start", opponentId);
+  }
+
+  function handleAcceptInvite() {
+    if (!invite) return;
+    const socket = getSocket();
+    socket.emit("game:ttt-accept", invite.gameId);
+  }
+
   function handleNicknameSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!nicknameInput.trim()) return;
@@ -107,7 +138,6 @@ export default function ChatRoom({ code }: ChatRoomProps) {
     setNeedsNickname(false);
   }
 
-  // Show nickname input for direct link visitors
   if (needsNickname) {
     return (
       <div className="flex items-center justify-center h-dvh p-4">
@@ -146,6 +176,8 @@ export default function ChatRoom({ code }: ChatRoomProps) {
     );
   }
 
+  const socket = getSocket();
+
   return (
     <div className="flex flex-col h-dvh">
       <RoomHeader
@@ -154,7 +186,37 @@ export default function ChatRoom({ code }: ChatRoomProps) {
         onLeave={handleLeave}
         onToggleVoice={() => setShowVoice((v) => !v)}
         showVoiceToggle
-      />
+      >
+        <GameMenu
+          users={users}
+          mySocketId={socket.id || ""}
+          onChallenge={handleChallenge}
+        />
+      </RoomHeader>
+
+      {/* Game invite notification */}
+      {invite && (
+        <div className="flex items-center justify-between px-4 py-2 bg-purple-900/50 border-b border-purple-700">
+          <p className="text-sm">
+            <span className="font-semibold">{invite.fromNickname}</span> wants to play Tic-Tac-Toe!
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAcceptInvite}
+              className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-sm font-semibold transition-colors"
+            >
+              Accept
+            </button>
+            <button
+              onClick={() => setInvite(null)}
+              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+            >
+              Decline
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-1 min-h-0">
         <div className={`flex flex-col flex-1 ${showVoice ? "hidden md:flex" : "flex"}`}>
           <ChatMessages messages={messages} />
@@ -164,6 +226,16 @@ export default function ChatRoom({ code }: ChatRoomProps) {
           <VoicePanel users={users} />
         </div>
       </div>
+
+      {/* Active game overlay */}
+      {activeGame && (
+        <TicTacToe
+          gameId={activeGame.gameId}
+          players={activeGame.players}
+          nicknames={activeGame.nicknames}
+          onClose={() => setActiveGame(null)}
+        />
+      )}
     </div>
   );
 }
